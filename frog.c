@@ -56,28 +56,25 @@ void *verificaPulo(void *arg) {
 	pthread_barrier_wait(&barrier);
 
 	if (sapo->Sexo == femea || sapo->Sexo == macho) {
-		while (possoPular) {
+		do {
+			pthread_mutex_lock(&mutex);
 			localPulo = pular(sapo);
-			if (localPulo > -1) {
-				pthread_mutex_lock(&mutex);
-				localPulo = pular(sapo);
-				if (saposLagoa[localPulo].Sexo == pedra) {
-					Sapo sapoPedra = saposLagoa[localPulo];
+			if (localPulo > -1 && saposLagoa[localPulo].Sexo == pedra) {
+				Sapo sapoPedra = saposLagoa[localPulo];
 
-					//mudar local do sapo
-					int possicaoSapo = sapo->Possicao;
-					sapo->Possicao = localPulo;
-					saposLagoa[localPulo] = *sapo;
+				//mudar local do sapo
+				int possicaoSapo = sapo->Possicao;
+				sapo->Possicao = localPulo;
+				saposLagoa[localPulo] = *sapo;
 
-					//mudar pedra
-					sapoPedra.Possicao = possicaoSapo;
-					saposLagoa[possicaoSapo] = sapoPedra;
-					totalPulos = 0;
-				}
-				pthread_mutex_unlock(&mutex);
+				//mudar pedra
+				sapoPedra.Possicao = possicaoSapo;
+				saposLagoa[possicaoSapo] = sapoPedra;
+				totalPulos = 0;
 			}
+			pthread_mutex_unlock(&mutex);
 			totalPulos++;
-		}
+		} while (possoPular) ;
 	}
 	return ((void *) 0);
 }
@@ -108,24 +105,33 @@ void mostraSapos(Sapo *sapos) {
 	printf("\n");
 }
 
-// bool ordemCorreta() {
-// 	int retorno = false;
-// 	int pedra = false;
-// 	for (int i = 0; i < tamanho; i++) {
-// 		if (saposLagoa[i].Sexo == pedra) {
-// 			pedra = true;
-// 		}
-// 		if (saposLagoa[i].Sexo == femea && pedra == true) {
-// 			retorno = false;
-// 		} else {
-// 			retorno = true;
-// 		}
-// 	}
-// 	return retorno;
-// }
+bool ordemCorreta() {
+	if (saposLagoa[metade].Sexo != pedra) {
+		return false;
+	}
+	for (int i = 0; i < metade; i++) {
+		if (saposLagoa[i].Sexo == macho) {
+			return false;
+			break;
+		}
+	}
+	return true;
+}
+
+bool existemPulos() {
+	pthread_mutex_lock(&mutex);
+	for (int i = 0; i < tamanho; i++) {
+		if (pular(&saposLagoa[i]) != -1) {
+			pthread_mutex_unlock(&mutex);
+			return true;
+		}
+	}
+	pthread_mutex_unlock(&mutex);
+	return false;
+}
 
 void *existemPulosThread() {
-	while (totalPulos < 100000) {
+	while (existemPulos()) {
 		possoPular = true;
 	}
 	possoPular = false;
@@ -136,14 +142,14 @@ int main() {
 	pthread_t threads[tamanho];
 	pthread_t threadsVerificaPulo;
 	pthread_barrier_init(&barrier, NULL, tamanho);
-	for (int reinicios = 0; reinicios < 100; reinicios++) {
+	for (int reinicios = 0; reinicios < 100000; reinicios++) {
 		totalPulos = 0;
 		saposLagoa = gereVetor();
 		//mostraSapos(saposLagoa);
 
 		pthread_create(&threadsVerificaPulo, NULL, existemPulosThread, NULL);
 
-		for (int i = tamanho - 1; i >= 0; i--) {
+		for (int i = 0; i < tamanho; i++) {
 			pthread_create(&threads[i], NULL, verificaPulo, &saposLagoa[i]);
 		}
 
@@ -152,10 +158,11 @@ int main() {
 		}
 		pthread_join(threadsVerificaPulo, NULL);
 		mostraSapos(saposLagoa);
+		if (ordemCorreta()) {
+			printf("ordem Correta");
+			break;
+		}
 		free(saposLagoa);
-		//verifica se
-
-		//printf("Fim do programa\n");
 	}
 	pthread_barrier_destroy(&barrier);
 	return (0);
