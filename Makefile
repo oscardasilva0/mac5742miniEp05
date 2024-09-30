@@ -1,17 +1,18 @@
-TARGET = mini_ep5
+TARGET = flog
 SOURCES = frog.c
-CFLAGS = -Wall -g 
+CFLAGS = -Wall -g -fopenmp
 
 # Regra padrão para compilar com gprof
 all: $(TARGET)_gprof
 
 # Regra para compilar com gprof
 $(TARGET)_gprof: $(SOURCES)
-	gcc -pg $(CFLAGS) -o $@ $^
+	gcc -pg $(CFLAGS) -o ./build/$(TARGET)_gprof $^
+
 
 # Regra para compilar para usar com perf
 $(TARGET)_perf: $(SOURCES)
 	gcc $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f $(TARGET)_gprof $(TARGET)_perf gmon.out
+	rm -f ./build/$(TARGET)_gprof ./build/$(TARGET)_perf ./build/gmon.out
