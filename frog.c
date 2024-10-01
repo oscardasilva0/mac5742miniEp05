@@ -120,18 +120,19 @@ bool ordemCorreta() {
 
 bool existemPulos() {
 	pthread_mutex_lock(&mutex);
+	bool retorno = false;
 	for (int i = 0; i < tamanho; i++) {
 		if (pular(&saposLagoa[i]) != -1) {
-			pthread_mutex_unlock(&mutex);
-			return true;
+			retorno = true;
 		}
 	}
 	pthread_mutex_unlock(&mutex);
-	return false;
+	return retorno;
 }
 
 void *existemPulosThread() {
-	while (existemPulos()) {
+	int maximoPulos = 10000000 * tamanho;
+	while (existemPulos() && totalPulos < (unsigned int) maximoPulos) {
 		possoPular = true;
 	}
 	possoPular = false;
@@ -142,7 +143,8 @@ int main() {
 	pthread_t threads[tamanho];
 	pthread_t threadsVerificaPulo;
 	pthread_barrier_init(&barrier, NULL, tamanho);
-	for (int reinicios = 0; reinicios < 100000; reinicios++) {
+	int totalCorretos = 0;
+	for (int reinicios = 0; reinicios < 10000; reinicios++) {
 		totalPulos = 0;
 		saposLagoa = gereVetor();
 		//mostraSapos(saposLagoa);
@@ -159,11 +161,11 @@ int main() {
 		pthread_join(threadsVerificaPulo, NULL);
 		mostraSapos(saposLagoa);
 		if (ordemCorreta()) {
-			printf("ordem Correta");
-			break;
+			totalCorretos++;
 		}
 		free(saposLagoa);
 	}
 	pthread_barrier_destroy(&barrier);
+	printf("Total de corretos: %d\n", totalCorretos);
 	return (0);
 }

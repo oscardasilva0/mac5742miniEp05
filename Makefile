@@ -1,6 +1,6 @@
 TARGET = flog
 SOURCES = frog.c
-CFLAGS = -Wall -g -fopenmp
+CFLAGS = -Wall -Wextra -Werror -pthread
 
 # Regra padrão para compilar com gprof
 all: $(TARGET)_gprof
