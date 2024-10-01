@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_barrier_t barrier;
@@ -11,7 +12,7 @@ volatile unsigned int count = 0;
 
 void *increment(void *);
 
-volatile unsigned int totalPulos = 0;
+int totalPulos = 0;
 bool possoPular = true;
 
 static char femea = 'F';
@@ -55,10 +56,11 @@ void *verificaPulo(void *arg) {
 
 	pthread_barrier_wait(&barrier);
 
-	if (sapo->Sexo == femea || sapo->Sexo == macho) {
-		do {
+	do {
+		if (sapo->Sexo == femea || sapo->Sexo == macho) {
 			pthread_mutex_lock(&mutex);
 			localPulo = pular(sapo);
+			totalPulos++;
 			if (localPulo > -1 && saposLagoa[localPulo].Sexo == pedra) {
 				Sapo sapoPedra = saposLagoa[localPulo];
 
@@ -73,9 +75,9 @@ void *verificaPulo(void *arg) {
 				totalPulos = 0;
 			}
 			pthread_mutex_unlock(&mutex);
-			totalPulos++;
-		} while (possoPular) ;
-	}
+		}
+	} while (possoPular) ;
+
 	return ((void *) 0);
 }
 
@@ -131,30 +133,46 @@ bool existemPulos() {
 }
 
 void *existemPulosThread() {
-	int maximoPulos = 10000000 * tamanho;
-	while (existemPulos() && totalPulos < (unsigned int) maximoPulos) {
+	int maximoPulos = 1000000 * tamanho;
+	while (existemPulos() && totalPulos < maximoPulos) {
 		possoPular = true;
 	}
 	possoPular = false;
+	totalPulos = 0;
+	pthread_exit(NULL);
+	return ((void *) 0);
+}
+
+void *printThread() {
+	while (true) {
+		printf("Pulos: %d\n", totalPulos);
+		printf("PossoPular: %d\n", possoPular);
+		sleep(50);
+	}
 	return ((void *) 0);
 }
 
 int main() {
 	pthread_t threads[tamanho];
 	pthread_t threadsVerificaPulo;
+	pthread_t threadsPrint;
+
+
 	pthread_barrier_init(&barrier, NULL, tamanho);
 	int totalCorretos = 0;
-	for (int reinicios = 0; reinicios < 10000; reinicios++) {
+	for (int reinicios = 0; reinicios < 100000; reinicios++) {
 		totalPulos = 0;
 		saposLagoa = gereVetor();
-		//mostraSapos(saposLagoa);
 
 		pthread_create(&threadsVerificaPulo, NULL, existemPulosThread, NULL);
+		pthread_create(&threadsPrint, NULL, printThread, NULL);
 
 		for (int i = 0; i < tamanho; i++) {
-			pthread_create(&threads[i], NULL, verificaPulo, &saposLagoa[i]);
+			if (pthread_create(&threads[i], NULL, verificaPulo, &saposLagoa[i]) != 0) {
+				perror("Erro ao criar thread do sapo");
+				exit(1); // Encerra o programa em caso de erro
+			}
 		}
-
 		for (int i = 0; i < tamanho; i++) {
 			pthread_join(threads[i], NULL);
 		}
@@ -166,6 +184,7 @@ int main() {
 		free(saposLagoa);
 	}
 	pthread_barrier_destroy(&barrier);
+	pthread_exit(NULL);
 	printf("Total de corretos: %d\n", totalCorretos);
 	return (0);
 }
